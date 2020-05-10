@@ -1,0 +1,15 @@
+{
+  "zdf-heute" : {
+    "type" : "rss",
+    "feed" : "http://www.heute.de/zdfheute/rss",
+    "db" : "zdf-heute.sqlite",
+    "schema" : [ "db-core.sql" ],
+    "gambling" : "Ähem..."
+  },
+  "ard-tagesschau" : {
+    "type" : "rss",
+    "feed" : "http://www.tagesschau.de/xml/rss2",
+    "db" : "ard-tagesschau.sqlite",
+    "schema" : [ "db-core.sql" ]
+  }
+}

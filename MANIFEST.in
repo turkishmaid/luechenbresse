@@ -1,0 +1,3 @@
+include README.md
+recursive-include luechenbresse *
+recursive-exclude luechenbresse *.pyc

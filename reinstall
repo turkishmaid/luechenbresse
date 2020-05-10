@@ -1,0 +1,16 @@
+#!/bin/bash
+
+echo
+echo "weg damit"
+python setup.py develop --uninstall
+echo "weg mit dem Ei"
+rm -r luechenbresse.egg-info
+
+echo
+echo "installiere als develop"
+pip install -e ./
+
+echo
+echo "nie ohne test"
+#python setup.py test
+pytest

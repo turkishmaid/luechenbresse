@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+# coding: utf-8
+
+# created: 05.05.20
+
+"""
+Welcome to the 'luechenbresse' module initialization script.
+
+Usage:
+    luechenbresse [--info] [--init] [--dir DIR] [--get FEED] [--get_all]
+    luechenbresse --version
+    luechenbresse (-h | --help)
+
+Options
+    -h --help           Show this screen
+    --version           print program version
+    --tatsch            produces a file in the scripts current working directory (test only)
+    --info              print some info about environment
+    --args              print parsed command line arguments (test only)
+    --init              initialize local structures in ~/.luechenbresse
+    --dir DIR           folder for the database files, relative to CWD, you better use ~/...
+                        if not specified, ~/.luechenbresse will be used
+                        caveat: existing settings will be overwritten when specified
+    --get FEED          gets a certain feed from the internet
+    --get_all           gets all feeds from the internet
+
+The optional "--dir" command line argument is only used when "--init" is also specified.
+All housekeeping commands use the database folder specified in ~/.luechenbresse/luechenbresse.ini.
+"""
+
+import sys
+import os
+from time import time
+import json
+from pathlib import Path
+import configparser
+import tracemalloc
+import sqlite3
+
+from docopt import docopt
+
+from luechenbresse import data
+from luechenbresse.feed import process_feed, process_all_feeds
+
+# cwd ist der Aufrufort (Skript muss nicht ausführbar i.S.v. `chmod u+x` sein)
+# Files aus der Distribution können über die `__files__` Variable navogiert werden.
+
+def info(args):
+    print("I am", os.environ['_'])
+    print("Running under", sys.executable,
+          f"({sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro})")
+    print("Current Working Directory:", os.getcwd())
+    print("Command line arguments:", json.dumps(args, indent=4))
+    print(f"__file__ = {__file__}")
+    feeds = data.feeds()
+    print("feeds:", type(feeds), feeds)
+
+def create_db(db_file, schema):
+    # TODO support more than one schema per db
+    if isinstance(schema, list):
+        schema = schema[0]
+    sql, _ = data.schema(schema)
+    con = sqlite3.connect(db_file)
+    cur = con.cursor()
+    cur.executescript(sql)
+    con.close()
+
+def init(db_folder):
+    # TODO move to module
+    print()
+
+    # create ~/.luechenbresse
+    config_folder = Path(os.environ["HOME"]) / ".luechenbresse"
+    print(f"Configuration folder: {config_folder}", end=" ")
+    if config_folder.exists():
+        print("OK")
+    else:
+        print(f"creating...")
+        config_folder.mkdir()
+
+    # create init-file
+    ini_file = config_folder / "luechenbresse.ini"
+    config = configparser.ConfigParser()
+    print(f"Configuration file: {ini_file}", end=" ")
+    if ini_file.exists():
+        print("OK")
+    else:
+        print("creating...")
+        ini_file.touch()
+
+    config.read(ini_file)
+    if not config.has_section("databases"):
+        config.add_section("databases")
+
+    # create database folder
+    if not db_folder:
+        print("Databases go into default location")
+        db_folder = config_folder
+    else:
+        db_folder = Path(db_folder).resolve()
+        print(f"Databases go into {db_folder}")
+
+    if "folder" in config["databases"]:
+        current_db_folder = config["databases"]["folder"]
+        print(f"Current folder for databases: {current_db_folder} - will be replaced")
+    else:
+        print("No database location specified yet")
+
+    print(f"Setting database location to {db_folder}")
+    config["databases"]["folder"] = str(db_folder)
+    with open(ini_file, "w") as fp:
+        config.write(fp)
+
+    if db_folder.exists():
+        print("Using existing folder")
+    else:
+        print(f"Creating {db_folder}...")
+        db_folder.mkdir()
+
+    feeds = data.feeds()
+    for name in feeds:
+        print(f"Installing {name}")
+        feed = feeds[name]
+        db_file = db_folder / feed["db"]
+        schema = feed["schema"]
+        print(f"   Database {db_file}", end=" ")
+        if db_file.exists():
+            print("exists. LEAVING UNCHANGED")
+        else:
+            print(f"will be created with schema {schema}")
+            # TODO: buffer schema
+            create_db(db_file, schema)
+
+    print()
+
+def get(name):
+    process_feed(name)
+
+def get_all():
+    process_all_feeds()
+
+if __name__ == "__main__":
+    print()
+    tracemalloc.start()
+    t0 = time()
+
+    arguments = docopt(__doc__, version='Luechenbresse 0.1')
+    done = False
+
+    if arguments["--info"]:
+        info(arguments)
+        print("Done.")
+        raise SystemExit(0)
+#        done = True
+
+    if arguments["--init"]:
+        init(arguments["--dir"])
+        done = True
+
+    if arguments["--get"]:
+        get(arguments["--get"])
+        done = True
+
+    if arguments["--get_all"]:
+        get_all()
+        done = True
+
+    if not done:
+        print("Tach.")
+
+    print()
+    print("Time total: %0.1fs" % (time() - t0))
+    current, peak = tracemalloc.get_traced_memory()
+    print("Memory: current = %0.1f MB, peak = %0.1f MB" % (current / 1024.0 / 1024, peak / 1024.0 / 1024))
