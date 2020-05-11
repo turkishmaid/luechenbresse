@@ -154,7 +154,7 @@ if __name__ == "__main__":
     logging.info("Willkommen bei der Luechenbresse.")
 
     try:
-        arguments = docopt(__doc__, version='Luechenbresse 0.1')
+        arguments = docopt(__doc__, version='Luechenbresse 0.0.2')
         logging.info(f"cli: {json.dumps(arguments)}")
         done = False
 

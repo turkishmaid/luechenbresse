@@ -14,7 +14,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='luechenbresse',
-    version = '0.0.1',
+    version = '0.0.2',
     description = 'Scraping Germany',
     long_description = long_description,
     long_description_content_type = "text/markdown",
