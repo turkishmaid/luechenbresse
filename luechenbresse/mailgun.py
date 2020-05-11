@@ -8,6 +8,8 @@ Created: 11.05.20
 """
 
 import requests
+import logging
+
 from luechenbresse import ini
 
 
@@ -27,9 +29,9 @@ class Mailgun(object):
 
     def shoot(self, subject, body):
         if not self.active:
-            print("no mailgun account configured")
+            logging.info("no mailgun account configured")
         else:
-            print("sending mail:", subject)
+            logging.info(f"sending mail: {subject}")
             try:
                 r = requests.post(
                     self.url,
@@ -40,9 +42,9 @@ class Mailgun(object):
                         "subject": subject,
                         "text": body
                     })
-                print("HTTP", r.status_code)
+                logging.info(f"HTTP {r.status_code}")
             except Exception as ex:
-                print(ex.__class__.__name__, str(ex))
+                logging.exception(f"{ex.__class__.__name__}: {str(ex)}")
 
 if __name__ == "__main__":
     pass

@@ -14,6 +14,7 @@ import random
 import sqlite3
 from pathlib import Path
 import importlib
+import logging
 
 import requests
 import feedparser
@@ -32,7 +33,7 @@ class FakeRequest:
 # tame network requests
 def hold_on():
     bubu = random.uniform(3, 8)
-    print(f"sleeping {bubu:0.2f} sec")
+    logging.info(f"sleeping {bubu:0.2f} sec")
     sleep(bubu)
 
 
@@ -56,6 +57,7 @@ class Feed:
         :param db: name of the db file (location from luechenbresse.ini)
         :param schema: list(str) of schemas to apply
         """
+        logging.info(f"Feed.__init__: {name} ({type}) from {feed}")
         self.name = name
         self.feed = feed
         self.type = type
@@ -66,7 +68,7 @@ class Feed:
         self.db = ini_file / db
         self.schema = schema # TODO support more than one schema
         feed_module_name = "luechenbresse."+name
-        print(f"loading module {feed_module_name}")
+        logging.info(f"loading module {feed_module_name}")
         self.feed_module = importlib.import_module(feed_module_name)
         # methods will open and close connection if not done from outside
         self.conn = None
@@ -114,24 +116,26 @@ class Feed:
         for url in unique:
             entries.append(unique[url])
         entries.sort(key=lambda tup: tup[3], reverse=True)  # tup[3]=ts
-        return entries, cnt - len(entries)
+        logging.info(f"{len(entries)} entries, {cnt - len(entries)} duplicates removed")
+        return entries
 
     def get_rss(self):
+        logging.info(f"GET {self.name}")
         t0 = time()
         # TODO catch exceptions
         f = feedparser.parse(self.feed)
         #dt = f"{time() - t0:0.3f}s"
         title, published = self.feed_module.parse_feed_header(f["feed"])
-        print("feed:", title)
+        logging.info(f"feed: {title}")
         if published:
-            print("published:", published)
-        print(f"got from the internet in {time() - t0:0.3f} sec")
+            logging.info(f"published: {published}")
+        logging.info(f"got from the internet in {time() - t0:0.3f} sec")
         private_connection = False
         if not self.cur:
             private_connection = True
             self._open_db()
         # sort entries by their own timestamps
-        entries, cnt_dup = self._cleansed_entries(f)
+        entries = self._cleansed_entries(f)
         cnt_new = 0
         cnt_old = 0
         for entry in entries:
@@ -140,14 +144,13 @@ class Feed:
                 cnt_old += 1
             else:
                 cnt_new += 1
-                print(ts, title)
+                logging.info(f"{ts} {title}")
                 self._upsert_article(url, rss_id, title, ts)
-        print(f"{cnt_new} new, {cnt_old} known, {cnt_dup} duplicates ignored")
+        logging.info(f"{cnt_new} new, {cnt_old} known")
         self.conn.commit()
         if private_connection:
             self._close_db()
-        dt = f"{time() - t0:0.3f}s"
-        print(dt)
+        logging.info(f"get_rss() total: {time() - t0:0.3f}s")
 
     def _get_backlog(self):
         private_connection = False
@@ -169,20 +172,21 @@ class Feed:
                 "ts": row[1],
                 "title": row[2]
             })
-        print(f"Backlog: {len(a)} Artikel")
+        logging.info(f"Backlog: {len(a)} Artikel")
         return a
 
     def _download_article(self, a):
         # a like returned by get_backlog()
-        print(f'{a["ts"]} –– {a["title"]}')
+        logging.info(f'downloading {a["ts"]} –– {a["title"]}')
         t0 = time()
         try:
             r = requests.get(a["url"])
         except Exception as ex:
-            print(ex)
+            logging.error(ex)
+            logging.debug("faking request object")
             r = FakeRequest()
         dt = time() - t0
-        print(f'{a["url"]}: {dt:0.3f}s HTTP {r.status_code}')
+        logging.info(f'{a["url"]}: {dt:0.3f}s HTTP {r.status_code}')
         text = r.text if r.status_code == 200 else None
         now = datetime.now().isoformat()[:19]
         row = (now, r.status_code, dt, text, a["url"])
@@ -200,40 +204,29 @@ class Feed:
             self._close_db()
 
     def process_backlog(self):
+        logging.info(f"Processing backlog for {self.name}")
         backlog = self._get_backlog()
         for i, article in enumerate(backlog):
-            print()
-            print(i)
+            logging.info(i)
             self._download_article(article)
             hold_on()
 
 
-def header(s):
-    print()
-    print()
-    print(s)
-    print()
-
 def process_feed(name):
     feed = Feed.from_name(name)
-    header("Get RSS Feed...")
     feed.get_rss()
-    header("Download New Articles...")
     feed.process_backlog()
-    header("Ciao.")
 
 def process_all_feeds():
+    logging.debug("process_all_feeds()")
     feeds = data.feeds()
+    logging.debug(f"{len(feeds)} feeds")
     for name in feeds:
         feed = Feed.from_name(name)
-        header(f"Get RSS Feed {name}...")
         feed.get_rss()
     for name in feeds:
         feed = Feed.from_name(name)
-        header(f"Download New Articles For {name}...")
         feed.process_backlog()
-    header("Ciao.")
-
 
 if __name__ == "__main__":
     pass

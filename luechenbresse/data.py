@@ -8,6 +8,7 @@ Following wim's advice in https://stackoverflow.com/a/58941536/3991164
 Created: 09.05.20
 """
 
+import logging
 import pkgutil
 import json as _thejson
 
@@ -15,7 +16,7 @@ _DATA_BUFFER = dict()
 
 def get(name):
     if not name in _DATA_BUFFER:
-        print(f'pkgutil.get_data("__name__", "data/{name}")')
+        logging.info(f'pkgutil.get_data("__name__", "data/{name}")')
         binary = pkgutil.get_data(__name__, f"data/{name}")
         _DATA_BUFFER[name] = binary
     return _DATA_BUFFER[name]

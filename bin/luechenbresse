@@ -36,6 +36,8 @@ from pathlib import Path
 import configparser
 import tracemalloc
 import sqlite3
+import logging
+import logging.handlers
 
 from docopt import docopt
 
@@ -48,27 +50,12 @@ from luechenbresse.mailgun import Mailgun
 # Files aus der Distribution können über die `__files__` Variable navogiert werden.
 
 def info(args):
-    print("I am", os.environ['_'])
-    print("Running under", sys.executable,
-          f"({sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro})")
-    print("Current Working Directory:", os.getcwd())
-    print("Command line arguments:", json.dumps(args, indent=4))
-    print(f"__file__ = {__file__}")
+    logging.info("I am", os.environ['_'])
+    logging.info(f"Running under {sys.executable} ({sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro})")
+    logging.info(f"Current Working Directory: {os.getcwd()}")
+    logging.info(f"__file__ = {__file__}")
     feeds = data.feeds()
-    print("feeds:", type(feeds), feeds)
-    # show mailgun stuff
-    mg = "mailgun"
-    mailgun_url = ini.get(mg, "url")
-    if mailgun_url:
-        mailgun_auth_key = ini.get(mg, "auth-key")
-        mailgun_from = ini.get(mg, "from")
-        mailgun_to = ini.get(mg, "to")
-        print(mg)
-        print("   URL: ", mailgun_url)
-        print("   key: ", mailgun_auth_key)
-        print("   from:", mailgun_from)
-        print("   to:  ", mailgun_to)
-    #mailgun("luechenbresse --info", "Hey there.")
+    logging.info(f"feeds: {type(feeds)}, {json.dumps(feeds)}")
     Mailgun().shoot("luechenbresse --info", "Hey there.")
 
 def create_db(db_file, schema):
@@ -83,25 +70,23 @@ def create_db(db_file, schema):
 
 def init(db_folder):
     # TODO move to module
-    print()
 
     # create ~/.luechenbresse
     config_folder = Path(os.environ["HOME"]) / ".luechenbresse"
-    print(f"Configuration folder: {config_folder}", end=" ")
+    logging.info(f"Configuration folder: {config_folder}", end=" ")
     if config_folder.exists():
-        print("OK")
+        logging.info(f"Configuration folder: {config_folder} OK")
     else:
-        print(f"creating...")
+        logging.info(f"Configuration folder: {config_folder} will be created")
         config_folder.mkdir()
 
     # create init-file
     ini_file = config_folder / "luechenbresse.ini"
     config = configparser.ConfigParser()
-    print(f"Configuration file: {ini_file}", end=" ")
     if ini_file.exists():
-        print("OK")
+        logging.info(f"Configuration file: {ini_file} OK")
     else:
-        print("creating...")
+        logging.info(f"Configuration file: {ini_file} will be created")
         ini_file.touch()
 
     config.read(ini_file)
@@ -110,44 +95,41 @@ def init(db_folder):
 
     # create database folder
     if not db_folder:
-        print("Databases go into default location")
         db_folder = config_folder
+        logging.info("Databases go into default location")
     else:
         db_folder = Path(db_folder).resolve()
-        print(f"Databases go into {db_folder}")
+        logging.info(f"Databases go into {db_folder}")
 
     if "folder" in config["databases"]:
         current_db_folder = config["databases"]["folder"]
-        print(f"Current folder for databases: {current_db_folder} - will be replaced")
+        logging.info(f"Current folder for databases: {current_db_folder} - will be replaced")
     else:
-        print("No database location specified yet")
+        logging.info("No database location specified yet")
 
-    print(f"Setting database location to {db_folder}")
+    logging.info(f"Setting database location to {db_folder}")
     config["databases"]["folder"] = str(db_folder)
     with open(ini_file, "w") as fp:
         config.write(fp)
 
     if db_folder.exists():
-        print("Using existing folder")
+        logging.info("Using existing folder")
     else:
-        print(f"Creating {db_folder}...")
+        logging.info(f"Creating {db_folder}...")
         db_folder.mkdir()
 
     feeds = data.feeds()
     for name in feeds:
-        print(f"Installing {name}")
+        logging.info(f"Installing {name}")
         feed = feeds[name]
         db_file = db_folder / feed["db"]
         schema = feed["schema"]
-        print(f"   Database {db_file}", end=" ")
         if db_file.exists():
-            print("exists. LEAVING UNCHANGED")
+            logging.info(f"Database {db_file} exists. LEAVING UNCHANGED")
         else:
-            print(f"will be created with schema {schema}")
+            logging.info(f"Database {db_file} will be created with schema {schema}")
             # TODO: buffer schema
             create_db(db_file, schema)
-
-    print()
 
 def get(name):
     process_feed(name)
@@ -155,36 +137,52 @@ def get(name):
 def get_all():
     process_all_feeds()
 
+def setup_logging():
+    # TODO optional config for logging in luechenbresse.ini
+    log_file = Path(os.environ["HOME"]) / ".luechenbresse" / "default.log"
+    rfh = logging.handlers.RotatingFileHandler(log_file, maxBytes=100_000, backupCount=10)
+    rfh.setLevel(logging.INFO)
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setLevel(logging.DEBUG)
+    fmt = "%(asctime)s [%(levelname)s] %(message)s"
+    logging.basicConfig(level=logging.INFO, handlers=[ rfh, sh ], format=fmt)
+
 if __name__ == "__main__":
-    print()
     tracemalloc.start()
     t0 = time()
+    setup_logging()
+    logging.info("Willkommen bei der Luechenbresse.")
 
-    arguments = docopt(__doc__, version='Luechenbresse 0.1')
-    done = False
+    try:
+        arguments = docopt(__doc__, version='Luechenbresse 0.1')
+        logging.info(f"cli: {json.dumps(arguments)}")
+        done = False
 
-    if arguments["--info"]:
-        info(arguments)
-        print("Done.")
-        raise SystemExit(0)
-#        done = True
+        if arguments["--info"]:
+            info(arguments)
+            raise SystemExit(0)
+    #        done = True
 
-    if arguments["--init"]:
-        init(arguments["--dir"])
-        done = True
+        if arguments["--init"]:
+            init(arguments["--dir"])
+            done = True
 
-    if arguments["--get"]:
-        get(arguments["--get"])
-        done = True
+        if arguments["--get"]:
+            get(arguments["--get"])
+            done = True
 
-    if arguments["--get_all"]:
-        get_all()
-        done = True
+        if arguments["--get_all"]:
+            get_all()
+            done = True
 
-    if not done:
-        print("Tach.")
+        if not done:
+            logging.warning("Was wolltest Du denn?")
 
-    print()
-    print("Time total: %0.1fs" % (time() - t0))
-    current, peak = tracemalloc.get_traced_memory()
-    print("Memory: current = %0.1f MB, peak = %0.1f MB" % (current / 1024.0 / 1024, peak / 1024.0 / 1024))
+        logging.info("Time total: %0.1fs" % (time() - t0))
+        current, peak = tracemalloc.get_traced_memory()
+        logging.info("Memory: current = %0.1f MB, peak = %0.1f MB" % (current / 1024.0 / 1024, peak / 1024.0 / 1024))
+    except KeyboardInterrupt:
+        logging.warning("caught KeyboardInterrupt")
+    except Exception as ex:
+        logging.exception("Sorry.")
+    logging.info("Ciao.")
