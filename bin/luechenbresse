@@ -41,6 +41,8 @@ from docopt import docopt
 
 from luechenbresse import data
 from luechenbresse.feed import process_feed, process_all_feeds
+from luechenbresse import ini
+from luechenbresse.mailgun import Mailgun
 
 # cwd ist der Aufrufort (Skript muss nicht ausführbar i.S.v. `chmod u+x` sein)
 # Files aus der Distribution können über die `__files__` Variable navogiert werden.
@@ -54,6 +56,20 @@ def info(args):
     print(f"__file__ = {__file__}")
     feeds = data.feeds()
     print("feeds:", type(feeds), feeds)
+    # show mailgun stuff
+    mg = "mailgun"
+    mailgun_url = ini.get(mg, "url")
+    if mailgun_url:
+        mailgun_auth_key = ini.get(mg, "auth-key")
+        mailgun_from = ini.get(mg, "from")
+        mailgun_to = ini.get(mg, "to")
+        print(mg)
+        print("   URL: ", mailgun_url)
+        print("   key: ", mailgun_auth_key)
+        print("   from:", mailgun_from)
+        print("   to:  ", mailgun_to)
+    #mailgun("luechenbresse --info", "Hey there.")
+    Mailgun().shoot("luechenbresse --info", "Hey there.")
 
 def create_db(db_file, schema):
     # TODO support more than one schema per db
