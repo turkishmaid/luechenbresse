@@ -178,23 +178,9 @@ class LogManager(object):
         Mailgun().shoot(subject, body)
 
 
-def setup_logging():
-    # TODO optional config for logging in luechenbresse.ini
-    log_file = Path(os.environ["HOME"]) / ".luechenbresse" / "default.log"
-    rfh = logging.handlers.RotatingFileHandler(log_file, maxBytes=100_000, backupCount=10)
-    rfh.setLevel(logging.INFO)
-    sh = logging.StreamHandler(sys.stdout)
-    sh.setLevel(logging.DEBUG)
-    oneoff_file = Path(os.environ["HOME"]) / ".luechenbresse" / "current.log"
-    fh = logging.FileHandler(oneoff_file, mode="w")
-    fh.setLevel(logging.DEBUG)
-    fmt = "%(asctime)s [%(levelname)s] %(message)s"
-    logging.basicConfig(level=logging.INFO, handlers=[ rfh, sh, fh ], format=fmt)
-
 if __name__ == "__main__":
     tracemalloc.start()
     t0 = time()
-    #setup_logging()
     LogManager()
 
     logging.info("Willkommen bei der Luechenbresse.")
