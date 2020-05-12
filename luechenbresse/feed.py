@@ -106,17 +106,22 @@ class Feed:
         # remove duplicates
         unique = dict()
         cnt = 0
+        cnt_no_url = 0
         for raw_entry in fp_feed["entries"]:
             cnt += 1
             entry = self.feed_module.parse_feed_entry(raw_entry)
-            unique[entry[0]] = entry
+            if entry[0]: # entry[0]=url         # TODO use named tuple
+                unique[entry[0]] = entry
+            else:
+                cnt_no_url += 1
+                logging.info(f"empty URL for '{entry[2]}' dated '{entry[3]}'") # 2=title, 3=ts
         # sort by time
         # TODO list comprehension
         entries = list()
         for url in unique:
             entries.append(unique[url])
         entries.sort(key=lambda tup: tup[3], reverse=True)  # tup[3]=ts
-        logging.info(f"{len(entries)} entries, {cnt - len(entries)} duplicates removed")
+        logging.info(f"{cnt} entries, {cnt_no_url} w/o URL, duplicates removed, remainung: {len(entries)} ")
         return entries
 
     def get_rss(self):
@@ -157,9 +162,10 @@ class Feed:
         if not self.cur:
             private_connection = True
             self._open_db()
+        # avoid code for removal of the empty URL in the database, can still be done mmanually
         self.cur.execute("""
             SELECT url, ts, title FROM articles
-            WHERE dl_http != 200 OR dl_http IS NULL
+            WHERE ( dl_http != 200 OR dl_http IS NULL ) AND url != ''
             ORDER BY ts
         """)
         rows = self.cur.fetchall()

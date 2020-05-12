@@ -10,6 +10,7 @@ Created: 09.05.20
 import json
 import sys
 import feedparser
+import requests
 from luechenbresse import data
 
 
@@ -24,10 +25,18 @@ if __name__ == "__main__":
         raise SystemExit(0)
     print(liste[i])
     feed_name = liste[i]
-    fd = feedparser.parse(feeds[feed_name]["feed"])
+    url = feeds[feed_name]["feed"]
+
+    r = requests.get(url)
+    print(f"GET {url}: HTTP {r.status_code}")
+    with open("./muster/"+feed_name+".xml", "w") as f: # TODO würg...
+        f.write(r.text)
+
+    fd = feedparser.parse(url)
     file_content = json.dumps(fd, indent=4)
     lines = file_content.split("\n")
     for line in lines[:20]:
         print(line)
     with open("./muster/"+feed_name+".json", "w") as f: # TODO würg...
         f.write(file_content)
+
