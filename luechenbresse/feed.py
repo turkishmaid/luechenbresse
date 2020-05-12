@@ -121,7 +121,7 @@ class Feed:
         for url in unique:
             entries.append(unique[url])
         entries.sort(key=lambda tup: tup[3], reverse=True)  # tup[3]=ts
-        logging.info(f"{cnt} entries, {cnt_no_url} w/o URL, duplicates removed, remainung: {len(entries)} ")
+        logging.info(f"{cnt} entries, {cnt_no_url} w/o URL, duplicates removed, remaining: {len(entries)} ")
         return entries
 
     def get_rss(self):

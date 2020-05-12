@@ -137,6 +137,47 @@ def get(name):
 def get_all():
     process_all_feeds()
 
+
+class LogManager(object):
+    """
+    Set up logging and hold enough context to close the logfile for the current run and send contents via mail
+    when all is set and done. A lalzada-Singleton.
+    """
+
+    def __new__(cls):
+        if not hasattr(cls, 'instance') or not cls.instance:
+            FMT = "%(asctime)s [%(levelname)s] %(message)s"
+            cls.instance = super().__new__(cls)
+            self = cls.instance  # TODO scnr
+            # default.log with 10 rotating segments of 100k each -> 1 MB (reicht viele Tage)
+            log_file = Path(os.environ["HOME"]) / ".luechenbresse" / "default.log"
+            rfh = logging.handlers.RotatingFileHandler(log_file, maxBytes=100_000, backupCount=10)
+            rfh.setLevel(logging.INFO)
+            # console output TODO switch off via ini-file
+            sh = logging.StreamHandler(sys.stdout)
+            sh.setLevel(logging.DEBUG)
+            # file for output of the current run, will be sent via mail
+            self.oneoff_file = Path(os.environ["HOME"]) / ".luechenbresse" / "current.log"
+            self.fh = logging.FileHandler(self.oneoff_file, mode="w")
+            self.fh.setLevel(logging.DEBUG)
+
+            logging.basicConfig(level=logging.INFO, handlers=[rfh, sh, self.fh], format=FMT)
+            logging.info("LogManager lebt.")
+        return cls.instance
+
+    def mail(self):
+        # close current.log
+        # https://stackoverflow.com/questions/15435652/python-does-not-release-filehandles-to-logfile
+        logger = logging.getLogger()
+        logger.removeHandler(self.fh)
+        logging.info(f"closed ~/.luechenbresse/current.log")
+        # send file contents via email
+        # https://realpython.com/python-pathlib/#reading-and-writing-files
+        subject = "von luechenbresse with love"
+        body = self.oneoff_file.read_text()
+        Mailgun().shoot(subject, body)
+
+
 def setup_logging():
     # TODO optional config for logging in luechenbresse.ini
     log_file = Path(os.environ["HOME"]) / ".luechenbresse" / "default.log"
@@ -144,13 +185,18 @@ def setup_logging():
     rfh.setLevel(logging.INFO)
     sh = logging.StreamHandler(sys.stdout)
     sh.setLevel(logging.DEBUG)
+    oneoff_file = Path(os.environ["HOME"]) / ".luechenbresse" / "current.log"
+    fh = logging.FileHandler(oneoff_file, mode="w")
+    fh.setLevel(logging.DEBUG)
     fmt = "%(asctime)s [%(levelname)s] %(message)s"
-    logging.basicConfig(level=logging.INFO, handlers=[ rfh, sh ], format=fmt)
+    logging.basicConfig(level=logging.INFO, handlers=[ rfh, sh, fh ], format=fmt)
 
 if __name__ == "__main__":
     tracemalloc.start()
     t0 = time()
-    setup_logging()
+    #setup_logging()
+    LogManager()
+
     logging.info("Willkommen bei der Luechenbresse.")
 
     try:
@@ -185,4 +231,5 @@ if __name__ == "__main__":
         logging.warning("caught KeyboardInterrupt")
     except Exception as ex:
         logging.exception("Sorry.")
+    LogManager().mail()
     logging.info("Ciao.")

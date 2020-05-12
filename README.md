@@ -48,6 +48,7 @@ verstanden werden.
   - ARD tagesschau
 - Download der in den Feeds referenzierten Artikel als HTML Quelltext
 - Halbautomatische Installation der benötigten Datenbanken
+- Ablaufprotokoll wird per email geschickt (mailgun)
 
 ### Geplant
 
@@ -72,14 +73,33 @@ Minute mit Warten verschwenden möchtest, klone das GitHub-Repository und verwen
 um eine lokale Entwicklerinstallation zu erhalten. Eine funktionsfähige Python-Installation ab Release 3.7 wird 
 vorausgesetzt. 
 
-## Verwendung
-
 ```sh
 # once
 pip install luechenbresse
 luechenbresse --init
+```
 
-# best planed as cron job to run at least every 3 hrs 
+### Mailgun-Anschluss (optional)
+
+Nachdem `luechenbresse --init` die Konfigurationsdatei `~/.luechenbresse/luechenbresse.ini` angelegt hat, 
+kann dort ein Abschnitt wie folgt manuell hinzugefügt werden:
+
+```ini
+[mailgun]
+url = https://api.mailgun.net/v3/sandbox12345678901234567890123.mailgun.org/messages
+auth-key = key-8674f976bb0w8678a0ds874sjldao787
+from = luechenbresse <postmaster@sandbox12345678901234567890123.mailgun.org>
+to = Sara Ziner <do.not.use@example.com>
+```
+
+wenn diese Konfiguration vorhanden ist, wird nach jedem Programmlauf die Print- und Log-Ausgabe über den
+beschriebenen Mailgun-Account an die angegebene `to`-Adresse geschickt. Weitergehende Konfigurationsmöglichkeiten
+werden (vielleicht) später hinzugefügt.
+
+## Verwendung
+
+```sh
+# best planned as cron job to run at least every 3 hrs 
 luechenbresse --get_all 
 ```
 
