@@ -2,7 +2,7 @@
 # coding: utf-8
 
 """
-WhatIsThisHere
+Support setuptools.
 
 Created: 03.05.20
 """
@@ -14,7 +14,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='luechenbresse',
-    version = '0.0.2',
+    version = '0.0.3',
     description = 'Scraping Germany',
     long_description = long_description,
     long_description_content_type = "text/markdown",
