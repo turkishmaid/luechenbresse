@@ -77,6 +77,9 @@ vorausgesetzt.
 # once
 pip install luechenbresse
 luechenbresse --init
+
+# at times
+pip install --upgrade luechenbresse
 ```
 
 ### Mailgun-Anschluss (optional)

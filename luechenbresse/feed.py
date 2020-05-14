@@ -218,12 +218,12 @@ class Feed:
             hold_on()
 
 
-def process_feed(name):
+def process_feed(name): # TODO make @staticmethod of Feed
     feed = Feed.from_name(name)
     feed.get_rss()
     feed.process_backlog()
 
-def process_all_feeds():
+def process_all_feeds(): # TODO make @staticmethod of Feed
     logging.debug("process_all_feeds()")
     feeds = data.feeds()
     logging.debug(f"{len(feeds)} feeds")
