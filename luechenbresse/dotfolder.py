@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import sqlite3
 import logging
+import logging.handlers
 import configparser
 
 from luechenbresse import data
@@ -121,6 +122,7 @@ class LogManager(object):
 
             logging.basicConfig(level=logging.INFO, handlers=[rfh, sh, self.fh], format=FMT)
             logging.info("LogManager lebt.")
+            logging.info(f"luechenbresse.__version__ = {luechenbresse_version}")  # TODO gefällt mir nicht
 
         return cls.instance
 

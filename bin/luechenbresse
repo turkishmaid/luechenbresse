@@ -32,19 +32,13 @@ import sys
 import os
 from time import time
 import json
-from pathlib import Path
-import configparser
 import tracemalloc
-import sqlite3
 import logging
-import logging.handlers
 
 from docopt import docopt
 
-from luechenbresse import __version__ as luechenbresse_version      # TODO gefällt mir nicht
 from luechenbresse import data
 from luechenbresse import feed      # TODO change to from luechenbresse.feed import Feed
-from luechenbresse import ini
 from luechenbresse.mailgun import Mailgun
 from luechenbresse.dotfolder import LogManager, init_dotfolder
 
@@ -68,10 +62,9 @@ if __name__ == "__main__":
     LogManager()
 
     logging.info("Willkommen bei der Luechenbresse.")
-    logging.info(f"module version: {luechenbresse_version}")    # TODO gefällt mir nicht
 
     try:
-        arguments = docopt(__doc__, version='Luechenbresse 0.0.4')
+        arguments = docopt(__doc__, version='Luechenbresse 0.0.5')
         logging.info(f"cli: {json.dumps(arguments)}")
         done = False
 

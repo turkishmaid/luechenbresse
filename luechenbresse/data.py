@@ -27,7 +27,7 @@ def text(name):
 def json(name):
     return _thejson.loads(text(name))
 
-# TODO buffering
+# DONE buffering
 def feeds():
     return json("feeds.json")
 

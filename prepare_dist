@@ -1,0 +1,24 @@
+#!/bin/bash
+
+HERE=`pwd`
+HERE=`basename $HERE`
+if [ "x$HERE" != 'xluechenbresse' ]; then
+  echo "start in luechenbresse repo roor"
+  exit 1
+else
+  date
+  pwd
+fi
+
+echo
+echo "lösche build/ und dist/"
+
+rm -rf build dist
+
+echo
+echo "Bauen..."
+
+python3 setup.py sdist bdist_wheel
+
+echo
+echo "Fertig."
