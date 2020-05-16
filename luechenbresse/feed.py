@@ -49,6 +49,27 @@ class Feed:
         feed = feed_list[name]
         return Feed.from_json(name, feed)
 
+    @staticmethod
+    def process_feed(name):
+        feed = Feed.from_name(name)
+        feed.get_rss()
+        feed.process_backlog()
+
+    @staticmethod
+    def process_all_feeds():
+        logging.debug("process_all_feeds()")
+        feeds = data.feeds()
+        logging.debug(f"{len(feeds)} feeds")
+        for name in feeds:
+            feed = Feed.from_name(name)
+            feed.get_rss()
+        for name in feeds:
+            try:
+                feed = Feed.from_name(name)
+                feed.process_backlog()
+            except KeyboardInterrupt:
+                logging.warning(f"KeyboardInterrupt: skipping rest if {name}")
+
     def __init__(self, name, feed, type, db, schema):
         """
         Constructor.
@@ -128,7 +149,12 @@ class Feed:
         logging.info(f"GET {self.name}")
         t0 = time()
         # TODO catch exceptions
-        f = feedparser.parse(self.feed)
+        try:
+            f = feedparser.parse(self.feed)
+        except Exception:
+            logging.exception(f"cannot GET {self.name}")
+            logging.info(f"skipping {self.name}")
+            return
         #dt = f"{time() - t0:0.3f}s"
         title, published = self.feed_module.parse_feed_header(f["feed"])
         logging.info(f"feed: {title}")
@@ -181,9 +207,9 @@ class Feed:
         logging.info(f"Backlog: {len(a)} Artikel")
         return a
 
-    def _download_article(self, a):
+    def _download_article(self, a, i, n):
         # a like returned by get_backlog()
-        logging.info(f'downloading {a["ts"]} –– {a["title"]}')
+        logging.info(f'{i}/{n}: downloading {a["ts"]} –– {a["title"]}')
         t0 = time()
         try:
             r = requests.get(a["url"])
@@ -210,29 +236,14 @@ class Feed:
             self._close_db()
 
     def process_backlog(self):
+        # TODO vielleicht doch einmal connectiion? Dann aber mit try!
         logging.info(f"Processing backlog for {self.name}")
         backlog = self._get_backlog()
+        n = len(backlog)
         for i, article in enumerate(backlog):
-            logging.info(i)
-            self._download_article(article)
+            self._download_article(article, i+1, n)
             hold_on()
 
-
-def process_feed(name): # TODO make @staticmethod of Feed
-    feed = Feed.from_name(name)
-    feed.get_rss()
-    feed.process_backlog()
-
-def process_all_feeds(): # TODO make @staticmethod of Feed
-    logging.debug("process_all_feeds()")
-    feeds = data.feeds()
-    logging.debug(f"{len(feeds)} feeds")
-    for name in feeds:
-        feed = Feed.from_name(name)
-        feed.get_rss()
-    for name in feeds:
-        feed = Feed.from_name(name)
-        feed.process_backlog()
 
 if __name__ == "__main__":
     pass

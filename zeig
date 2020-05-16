@@ -9,6 +9,7 @@ Created: 09.05.20
 
 import json
 import sys
+from pathlib import Path
 import feedparser
 import requests
 from luechenbresse import data
@@ -29,14 +30,15 @@ if __name__ == "__main__":
 
     r = requests.get(url)
     print(f"GET {url}: HTTP {r.status_code}")
-    with open("./muster/"+feed_name+".xml", "w") as f: # TODO würg...
+    xml_path = Path("muster") / (feed_name + ".xml")
+    with xml_path.open(mode="w") as f:
         f.write(r.text)
+    print(f"Feed-Source in {xml_path}")
 
-    fd = feedparser.parse(url)
+    fd = feedparser.parse(r.text)
     file_content = json.dumps(fd, indent=4)
-    lines = file_content.split("\n")
-    for line in lines[:20]:
-        print(line)
-    with open("./muster/"+feed_name+".json", "w") as f: # TODO würg...
+    json_path = Path("muster") / (feed_name + ".json")
+    with json_path.open(mode="w") as f:
         f.write(file_content)
+    print(f"geparster Feed in {json_path}")
 

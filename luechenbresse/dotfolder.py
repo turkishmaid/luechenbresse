@@ -19,18 +19,24 @@ from luechenbresse import data
 from luechenbresse import __version__ as luechenbresse_version      # TODO gefällt mir nicht
 from luechenbresse.mailgun import Mailgun
 
+
+def ensure_dotfolder():
+    # ohne logging
+    config_folder = Path(os.environ["HOME"]) / ".luechenbresse"
+    if not config_folder.exists():
+        config_folder.mkdir()
+
 def _create_db(db_file, schema):
     # TODO support more than one schema per db
     if isinstance(schema, list):
         schema = schema[0]
-    sql, _ = data.schema(schema)
+    sql = data.schema(schema)
     con = sqlite3.connect(db_file)
     cur = con.cursor()
     cur.executescript(sql)
     con.close()
 
 def init_dotfolder(db_folder):
-    # TODO move init() to module
 
     # create ~/.luechenbresse
     config_folder = Path(os.environ["HOME"]) / ".luechenbresse"
@@ -89,11 +95,9 @@ def init_dotfolder(db_folder):
             logging.info(f"Database {db_file} exists. LEAVING UNCHANGED")
         else:
             logging.info(f"Database {db_file} will be created with schema {schema}")
-            # TODO: buffer schema
             _create_db(db_file, schema)
 
 
-# TODO move LogManager to module where init() will live
 class LogManager(object):
     """
     Set up logging and hold enough context to close the logfile for the current run and send contents via mail

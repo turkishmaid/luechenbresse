@@ -16,12 +16,8 @@ class TestData(unittest.TestCase):
 
     def test_schema(self):
         schema = "db-core.sql"
-        sql1, from_buffer = data.schema(schema)
-        self.assertFalse(from_buffer)           # TODO? may fail when other test already reads that
+        sql1 = data.schema(schema)
         self.assertIn("CREATE TABLE", sql1)
-        sql2, from_buffer = data.schema(schema)
-        self.assertTrue(from_buffer)
-        self.assertEqual(sql2, sql1)
 
 
 if __name__ == '__main__':

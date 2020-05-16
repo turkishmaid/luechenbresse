@@ -34,9 +34,4 @@ def feeds():
 _SCHEMA_BUFFER = dict()
 
 def schema(name):
-    from_buffer = True
-    if not name in _SCHEMA_BUFFER:
-        from_buffer = False
-        sql = text(name)
-        _SCHEMA_BUFFER[name] = sql
-    return _SCHEMA_BUFFER[name], from_buffer
+    return text(name)

@@ -2,6 +2,7 @@
 # coding: utf-8
 
 # created: 05.05.20
+# cwd ist der Aufrufort (Skript muss nicht ausführbar i.S.v. `chmod u+x` sein)
 
 """
 Welcome to the 'luechenbresse' module initialization script.
@@ -38,12 +39,10 @@ import logging
 from docopt import docopt
 
 from luechenbresse import data
-from luechenbresse import feed      # TODO change to from luechenbresse.feed import Feed
+from luechenbresse.feed import Feed
 from luechenbresse.mailgun import Mailgun
-from luechenbresse.dotfolder import LogManager, init_dotfolder
+from luechenbresse.dotfolder import LogManager, init_dotfolder, ensure_dotfolder
 
-# cwd ist der Aufrufort (Skript muss nicht ausführbar i.S.v. `chmod u+x` sein)
-# Files aus der Distribution können über die `__files__` Variable navogiert werden.
 
 def info(args):
     logging.info("I am", os.environ['_'])
@@ -55,10 +54,10 @@ def info(args):
     Mailgun().shoot("luechenbresse --info", "Hey there.")
 
 
-
 if __name__ == "__main__":
     tracemalloc.start()
     t0 = time()
+    ensure_dotfolder()
     LogManager()
 
     logging.info("Willkommen bei der Luechenbresse.")
@@ -71,18 +70,17 @@ if __name__ == "__main__":
         if arguments["--info"]:
             info(arguments)
             raise SystemExit(0)
-    #        done = True
 
         if arguments["--init"]:
             init_dotfolder(arguments["--dir"])
             done = True
 
         if arguments["--get"]:
-           feed.process_feed(arguments["--get"])
+            Feed.process_feed(arguments["--get"])
         done = True
 
         if arguments["--get_all"]:
-            feed.process_all_feeds()
+            Feed.process_all_feeds()
             done = True
 
         if not done:
