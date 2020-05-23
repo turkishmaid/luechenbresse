@@ -14,7 +14,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='luechenbresse',
-    version = '0.0.5',
+    version = '0.0.6',
     description = 'Scraping Germany',
     long_description = long_description,
     long_description_content_type = "text/markdown",
@@ -25,7 +25,7 @@ setuptools.setup(
     packages = setuptools.find_packages(),
     include_package_data = True,
     zip_safe = False,
-    scripts = [ "bin/luechenbresse" ],
+    scripts = [ "bin/luechenbresse", "bin/lb-btci" ],
     install_requires = [ 'requests', 'feedparser', 'bs4', 'docopt', ],
     classifiers=[
         "Programming Language :: Python :: 3",

@@ -3,7 +3,7 @@
 HERE=`pwd`
 HERE=`basename $HERE`
 if [ "x$HERE" != 'xluechenbresse' ]; then
-  echo "start in luechenbresse repo roor"
+  echo "start in luechenbresse repo root"
   exit 1
 else
   date

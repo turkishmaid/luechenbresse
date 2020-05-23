@@ -31,7 +31,7 @@ All housekeeping commands use the database folder specified in ~/.luechenbresse/
 
 import sys
 import os
-from time import time
+from time import time, perf_counter, process_time
 import json
 import tracemalloc
 import logging
@@ -56,14 +56,16 @@ def info(args):
 
 if __name__ == "__main__":
     tracemalloc.start()
-    t0 = time()
+    #t0 = time()
+    pc0 = perf_counter()
+    pt0 = process_time()
     ensure_dotfolder()
     LogManager()
 
     logging.info("Willkommen bei der Luechenbresse.")
 
     try:
-        arguments = docopt(__doc__, version='Luechenbresse 0.0.5')
+        arguments = docopt(__doc__, version='Luechenbresse 0.0.6')
         logging.info(f"cli: {json.dumps(arguments)}")
         done = False
 
@@ -86,7 +88,7 @@ if __name__ == "__main__":
         if not done:
             logging.warning("Was wolltest Du denn?")
 
-        logging.info("Time total: %0.1fs" % (time() - t0))
+        logging.info("Time total: %0.1fs (%0.1fs process)" % (perf_counter()-pc0, process_time()-pt0))
         current, peak = tracemalloc.get_traced_memory()
         logging.info("Memory: current = %0.1f MB, peak = %0.1f MB" % (current / 1024.0 / 1024, peak / 1024.0 / 1024))
     except KeyboardInterrupt:

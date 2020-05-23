@@ -49,6 +49,7 @@ verstanden werden.
 - Download der in den Feeds referenzierten Artikel als HTML Quelltext
 - Halbautomatische Installation der benötigten Datenbanken
 - Ablaufprotokoll wird per email geschickt (mailgun)
+- Übernahme von Altdaten
 
 ### Geplant
 

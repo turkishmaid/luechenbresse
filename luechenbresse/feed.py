@@ -8,7 +8,7 @@ Created: 09.05.20
 """
 
 import json
-from time import time, mktime, sleep
+from time import time, mktime, sleep, perf_counter
 from datetime import datetime
 import random
 import sqlite3
@@ -243,6 +243,66 @@ class Feed:
         for i, article in enumerate(backlog):
             self._download_article(article, i+1, n)
             hold_on()
+
+
+class FeedAPI:
+    """
+    convenience API for DB maintenance
+    friends of Feed
+    """
+
+    INSERT_SQL = """
+        INSERT INTO articles(url, rss_id, title, ts, realised_ts, dl_ts, dl_http, dl_dt, html) 
+            VALUES (:url, :rss_id, :title, :ts, :realised_ts, :dl_ts, :dl_http, :dl_dt, :html)
+            ON CONFLICT DO NOTHING
+    """
+
+    def __init__(self, name):
+        logging.info(f"FeedAPI.init({name})")
+        self.name = name
+        self.feed = Feed.from_name(name)
+
+    def open(self):
+        #logging.info(f"FeedAPI.open() for {self.name}")
+        pc = perf_counter()
+        self.feed._open_db()
+        logging.info(f"FeedAPI.open() for {self.name} in {(perf_counter() - pc) * 1000.0:0.1f} ms")
+
+    def commit(self):
+        #logging.info(f"FeedAPI.commit() for {self.name}")
+        pc = perf_counter()
+        self.feed.conn.commit()
+        logging.info(f"FeedAPI.commit() for {self.name} in {(perf_counter() - pc) * 1000.0:0.1f} ms")
+
+    def close(self):
+        #logging.info(f"FeedAPI.close() for {self.name}")
+        pc = perf_counter()
+        self.feed._close_db()
+        logging.info(f"FeedAPI.close() for {self.name} in {(perf_counter() - pc) * 1000.0:0.1f} ms")
+
+    def insert(self, d):
+        logging.info(f"FeedAPI.upsert({d['url']}) for {self.name}")
+        if not d["realised_ts"]:
+            now = datetime.now().isoformat()[:19]
+            d["realised_ts"] = now
+        self.feed.cur.execute(FeedAPI.INSERT_SQL, d)
+        return self.feed.cur.rowcount
+
+    def insertmany(self, l):
+        #logging.info(f"FeedAPI.upsert({len(l)}) for {self.name}")
+        now = datetime.now().isoformat()[:19]
+        for d in l:
+            if not d["realised_ts"]:
+                d["realised_ts"] = now
+        pc = perf_counter()
+        self.feed.cur.executemany(FeedAPI.INSERT_SQL, l)
+        rowcount = self.feed.cur.rowcount
+        logging.info(f"FeedAPI.insertmany({len(l)}) for {self.name} inserted {rowcount} rows in {(perf_counter() - pc) * 1000.0:0.1f} ms")
+        return rowcount
+
+    def exists(self, url):
+        return self.feed._is_there(url)
+
 
 
 if __name__ == "__main__":

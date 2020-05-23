@@ -1,0 +1,125 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+"""
+Input data from older versions of the database into a current luechenbresse database.
+
+Usage:
+    lb-btci INIFILE
+
+Options:
+    INIFILE         basename of a valid .ini file in the current working directory
+
+The ini-file specified MUST have a section [import] comprising the following keys:
+[import]
+    LEGACY_DB       absolute path, relative path, or $HOME-based path (starting with "~/")
+    FEED_NAME       feed name from luechenbresse/data/feeds.json
+    SELECT_SQL      shall return url, rss_id, title, ts, realised_ts, dl_ts, dl_http, dl_dt, html
+                    in whatever order. Indenting the multiline SQL by at least one stop is crucial
+                    in ini files.
+    FETCH_SIZE      the legacy DB will be read via fetchmany's with this size
+    MAX_FETCHES     debugging supprt: stop after this number of fetches, defaults to ignore
+"""
+# Created: 16.05.20
+
+from pathlib import Path
+import os
+import json
+import logging
+import tracemalloc
+from time import time, perf_counter
+import sqlite3
+import configparser
+
+from docopt import docopt
+
+from luechenbresse.feed import FeedAPI
+from luechenbresse.dotfolder import LogManager, init_dotfolder, ensure_dotfolder
+
+# https://docs.python.org/3.7/library/sqlite3.html#sqlite3.Connection.row_factory
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
+
+
+if __name__ == "__main__":
+    tracemalloc.start()
+    t0 = time()
+    pc00 = perf_counter()
+    ensure_dotfolder()
+    LogManager()
+    logging.info("luechenbresse legacy data importer")
+
+    arguments = docopt(__doc__, version='lb-btci 0.0.6')
+    logging.info(f"cli: {json.dumps(arguments)}")
+
+    config = configparser.ConfigParser()
+    config.read(arguments["INIFILE"]+'.ini')
+    legacy_db = config["import"]["LEGACY_DB"]
+    if legacy_db.startswith("~"):
+        home = os.environ["HOME"]
+        legacy_db = Path(home) / legacy_db[2:]
+    else:
+        legacy_db = Path(legacy_db)
+
+    # asserts most parameters to be in .ini-file
+    feed_name = config["import"]["FEED_NAME"]
+    select_sql = config["import"]["SELECT_SQL"]
+    fetch_size = int(config["import"]["FETCH_SIZE"])
+    try:
+        max_fetches = int(config["import"]["MAX_FETCHES"])
+    except KeyError:
+        max_fetches = -1
+
+    logging.info(f"BTCI: {legacy_db} -> {feed_name}")
+    logging.info(f"SQL = {select_sql}")
+    logging.info(f"fetch {fetch_size}, max={max_fetches}")
+
+    feed = FeedAPI(feed_name)
+    logging.info(f"from {legacy_db}, {legacy_db.exists()}")
+    logging.info(f"to {feed.feed.db}")
+
+    legacy_conn = sqlite3.connect(legacy_db)
+    legacy_conn.row_factory = dict_factory
+    legacy_cur = legacy_conn.cursor()
+    legacy_cnt = 0
+    inserted_cnt = 0
+    cnt_fetches = 0
+    try:
+        feed.open()
+        try:
+            legacy_cur.execute(select_sql)
+            # the following code is the rear end of the Python until 3.8 ...
+            while True:
+                cnt_fetches += 1
+                if max_fetches > 0 and cnt_fetches > max_fetches:
+                    logging.info(f"stopping after {max_fetches} fetches.")
+                    break
+                rows = legacy_cur.fetchmany(size=fetch_size)
+                if not rows:
+                    logging.info("Done with the cursor.")
+                    break
+                logging.info(f"fetched {len(rows)} rows from {rows[0]['ts']}: {rows[0]['title']}")
+                legacy_cnt += len(rows)
+                pc = perf_counter()
+                inserted = feed.insertmany(rows)
+                feed.commit()
+                #logging.info(f"inserted {inserted} rows in {(perf_counter()-pc)*1000.0:0.1f} ms")
+                inserted_cnt += inserted
+        except Exception as ex:
+            logging.exception("Something failed miserably.")
+        feed.close()
+    except Exception as ex:
+        logging.exception("Something failed miserably.")
+    legacy_conn.close()
+    logging.info(f"inserted {inserted_cnt} out of {legacy_cnt} legacy records.")
+
+    # hurz = { k: rows[0][k] for k in rows[0] if not k == "html" }
+    # hurz["html"] = f'{rows[0]["html"][:100]} ... ({str(len(rows[0]["html"]))})'
+    # logging.info(json.dumps(hurz, indent=4))
+
+    logging.info("Time total: %0.1f s" % (perf_counter() - pc00,))
+    current, peak = tracemalloc.get_traced_memory()
+    logging.info("Memory: current = %0.1f MB, peak = %0.1f MB" % (current / 1024.0 / 1024, peak / 1024.0 / 1024))

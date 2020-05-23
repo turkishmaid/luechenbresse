@@ -1,17 +1,31 @@
 #
 #     My .gitignore
 #
+
+# IntelliJ IDEA project directory
+.idea/
+
+# from Python with love
 /*.egg-info/
 /.eggs
 __pycache__/
 .pytest.cache/
 .ipynb.checkpoints/
+
+# greetings from my Mac :)
 .DS_Store
+
+# support tool "zeig" will download copyrighted data
+# this data shall not be published on GitHum
 muster/*.xml
 muster/*.json
 muster/*.txt
 muster/*.html
-.idea/
+
+# some other local files not meant for GitHub publishing
+local/
+
+
 
 #
 #     GitHub generated .gitignore for Python projects
