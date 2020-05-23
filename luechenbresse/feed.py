@@ -9,7 +9,7 @@ Created: 09.05.20
 
 import json
 from time import time, mktime, sleep, perf_counter
-from datetime import datetime
+from datetime import datetime, timedelta
 import random
 import sqlite3
 from pathlib import Path
@@ -24,17 +24,37 @@ from luechenbresse import data
 
 
 # mimicks a very simple Request object when a request failed
-class FakeRequest:
-    def __init__(self):
+class FakeResponse:
+    def __init__(self, dpc):
         self.status_code = 999
-        self.text = "Hurz."
+        self.text = None
+        self.response_time = timedelta(seconds=dpc)
+        self.elapsed = self.response_time
 
+# https://stackoverflow.com/questions/42365096/sensible-way-to-extend-requests-response-class
+class XResponse(requests.Response):
+    def __init__(self, req_response, response_time):
+        for k, v in req_response.__dict__.items():
+            self.__dict__[k] = v
+        self.response_time = response_time
 
 # tame network requests
 def hold_on():
     bubu = random.uniform(3, 8)
     logging.info(f"sleeping {bubu:0.2f} sec")
     sleep(bubu)
+
+def get(url):
+    pc0 = perf_counter()
+    try:
+        r = requests.get(url)
+    except Exception as ex:
+        logging.exception(f"Exception during HTTP GET {url}")
+        r = FakeResponse(perf_counter() - pc0)
+    dpc = perf_counter() - pc0
+    r = XResponse(r, dpc)
+    logging.info(f'HTTP {r.status_code}: {url} [{r.response_time * 1000:0.0f} ms]')
+    return r
 
 
 class Feed:
@@ -210,18 +230,9 @@ class Feed:
     def _download_article(self, a, i, n):
         # a like returned by get_backlog()
         logging.info(f'{i}/{n}: downloading {a["ts"]} –– {a["title"]}')
-        t0 = time()
-        try:
-            r = requests.get(a["url"])
-        except Exception as ex:
-            logging.error(ex)
-            logging.debug("faking request object")
-            r = FakeRequest()
-        dt = time() - t0
-        logging.info(f'{a["url"]}: {dt:0.3f}s HTTP {r.status_code}')
-        text = r.text if r.status_code == 200 else None
+        r = get(a["url"])
         now = datetime.now().isoformat()[:19]
-        row = (now, r.status_code, dt, text, a["url"])
+        row = (now, r.status_code, r.response_time, r.text, a["url"])
         private_connection = False
         if not self.cur:
             private_connection = True
