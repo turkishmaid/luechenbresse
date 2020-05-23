@@ -13,6 +13,7 @@ Options:
 The ini-file specified MUST have a section [import] comprising the following keys:
 [import]
     LEGACY_DB       absolute path, relative path, or $HOME-based path (starting with "~/")
+                    of the legacy SQLite file
     FEED_NAME       feed name from luechenbresse/data/feeds.json
     SELECT_SQL      shall return url, rss_id, title, ts, realised_ts, dl_ts, dl_http, dl_dt, html
                     in whatever order. Indenting the multiline SQL by at least one stop is crucial
